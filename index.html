@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title></title>
+    <style>
+        *{
+            margin: 0;
+            padding: 0;
+        }
+        html{overflow: hidden;}
+    </style>
+</head>
+<body>
+ <canvas id="c1" width="1024" height="768"></canvas>
+<script>
+    var oC = document.getElementById('c1');
+    var ctx = oC.getContext('2d');
+    var iWidth =1024;
+    var iHeight = 768;
+    var viewHeight = document.documentElement.clientHeight;
+    var cannonWidth = 57;
+    var cannonHeight = 64;
+    var cannonRotate = 0;
+    var bulletWidth = 24;
+    var bulletHeight = 26;
+    var bulletSpeed = 5;
+    var bulletData = [];
+    var bulletRotate = 0;
+    var fishWidth = 55;
+    var fishHeight = 37;
+    var fishSpeed = 1;
+    var fishData = [];
+    var moneyWidth = 60;
+    var moneyHeight = 60;
+    var moneyData =[];
+
+    iHeight = viewHeight<iHeight?viewHeight:iHeight;
+
+    loadImages(['bg.jpg','bullet.png','cannon.png','fish.png','gold.png'],function(imgs){
+        setInterval(function () {
+            ctx.clearRect(0,0,oC.width,oC.height);
+
+            for(var i = 0;i<bulletData.length;i++){
+                bulletData[i].x += bulletData[i].sX;
+                bulletData[i].y += bulletData[i].sY;
+
+                if(bulletData[i].x<0||bulletData[i].x>iWidth||bulletData[i].y<0||bulletData[i].y>iHeight){
+                    bulletData.splice(i,1);
+                }
+            }
+
+            for(var i = 0;i<fishData.length;i++){
+                fishData[i].x += fishData[i].sX;
+                fishData[i].y += fishData[i].sY;
+
+                fishData[i].iNow += 0.1;
+                if(fishData[i].iNow >= 4){
+                    fishData[i].iNow = 0;
+                }
+                if(fishData[i].x<0||fishData[i].x>iWidth||fishData[i].y<0||fishData[i].y>iHeight){
+                    fishData.splice(i,1);
+                }
+            }
+
+
+
+            for(var i = 0;i<bulletData.length;i++){
+                for(var j = 0;j<fishData.length;j++){
+                    if(pz(bulletData[i].x,bulletData[i].y,fishData[j].x,fishData[j].y)){
+
+                        moneyData.push({
+                            x:fishData[j].x,
+                            y:fishData[j].y,
+                            iNow:0
+                        });
+
+                      bulletData.splice(i,1);
+                        fishData.splice(j,1);
+                        break;
+                    }
+                }
+            }
+
+            for(var i = 0;i<moneyData.length;i++){
+                moneyData[i].iNow += 0.5;
+                if(moneyData[i].iNow>=10){
+                    moneyData[i].iNow = 0;
+                    moneyData.splice(i,1);
+                }
+            }
+
+            ctx.save();
+              var bg = ctx.createPattern(imgs['bg'],'no-repeat');
+              ctx.fillStyle = bg;
+              ctx.fillRect(0,0,iWidth,iHeight);
+            ctx.restore();
+
+            for(var i = 0;i<bulletData.length;i++){
+                ctx.save();
+                ctx.translate(bulletData[i].x,bulletData[i].y);
+                ctx.rotate(bulletData[i].r);
+                ctx.translate(-bulletWidth/2,-bulletHeight/2);
+                ctx.drawImage(imgs['bullet'],0,0,bulletWidth,bulletHeight);
+                ctx.restore();
+            }
+
+            for(var i = 0;i<fishData.length;i++){
+                ctx.save();
+                ctx.translate(fishData[i].x,fishData[i].y);
+                ctx.rotate(fishData[i].r);
+                ctx.translate(-fishWidth/2,-fishHeight/2);
+                ctx.drawImage(imgs['fish'],0,Math.floor(fishData[i].iNow)*fishHeight,fishWidth,fishHeight,0,0
+                ,fishWidth,fishHeight);
+                ctx.restore();
+            }
+
+
+
+            ctx.save();
+            ctx.translate(iWidth/2,iHeight-cannonHeight/2);
+            ctx.rotate(cannonRotate);
+            ctx.translate(-cannonWidth/2,-cannonHeight/2);
+            ctx.drawImage(imgs['cannon'],0,0,cannonWidth,cannonHeight);
+            ctx.restore();
+
+            for(var i = 0;i<moneyData.length;i++){
+                ctx.save();
+                ctx.translate(moneyData[i].x-moneyWidth/2,-moneyData[i].y-moneyHeight/2);
+                ctx.rotate(0);
+                ctx.drawImage(imgs['gold'],0,Math.floor(moneyData[i].iNow)*moneyHeight,
+                        moneyWidth,moneyHeight,0,0,moneyWidth,moneyHeight);
+                ctx.restore();
+            }
+
+        },1000/60);
+
+        setInterval(function () {
+            var x = Math.random()*iWidth;
+            var y = Math.random()*iHeight;
+            var rotate = 0;
+
+
+            var a = iWidth/2 - x;
+            var b = iHeight/2 - y;
+            var c = Math.sqrt(a*a + b*b);
+
+            var sX = fishSpeed*a/c;
+            var sY = fishSpeed*b/c;
+
+            if(a<0&&b>0){
+                rotate = -(Math.asin(b/c)+90*Math.PI/180)-90*Math.PI/180;
+            }else if(a<0){
+                rotate = Math.asin(a/c) - 90*Math.PI/180;
+            }
+            if(a>0&&b>0){
+                rotate = (Math.asin(b/c)+90*Math.PI/180)-90*Math.PI/180;
+            }else if(a>0){
+                rotate = Math.asin(a/c) - 90*Math.PI/180;
+            }
+            fishData.push({
+                x:iWidth*Math.random(),
+                y:iHeight*Math.random(),
+                sX:sX,
+                sY:sY,
+                r:rotate,
+                iNow:0
+            });
+        },400);
+
+        oC.onmousemove = function (ev) {
+
+            var x = ev.pageX - oC.offsetLeft;
+            var y = ev.pageY - oC.offsetTop;
+
+            var a = x - iWidth/2;
+            var b = y - (iHeight - cannonHeight/2);
+            var c = Math.sqrt(a*a + b*b);
+
+            cannonRotate = Math.asin(a/c);
+
+        };
+        oC.onmousedown = function (ev) {
+            var x = ev.pageX - oC.offsetLeft;
+            var y = ev.pageY - oC.offsetTop;
+
+            var a = x - iWidth/2;
+            var b = y - (iHeight - cannonHeight/2);
+            var c = Math.sqrt(a*a + b*b);
+            bulletRotate = Math.asin(a/c);
+
+            var sX = bulletSpeed*a/c;
+            var sY = bulletSpeed*b/c;
+
+
+            bulletData.push({
+                x:iWidth/2,
+                y:iHeight - cannonHeight/2,
+                sX:sX,
+                sY:sY,
+                r:bulletRotate
+            })
+        };
+    });
+
+    function loadImages(arr,fnSucc){
+        var iNow = 0;
+        var json = {};
+        for(var i = 0;i<arr.length;i++){
+            var img = new Image();
+            img.onload = function () {
+                iNow++;
+                if(iNow == arr.length){
+                    fnSucc(json);
+                }
+            };
+            img.src = 'img/'+arr[i];
+            var name = arr[i].split('.')[0];
+            json[name] = img;
+        }
+    }
+
+    function pz(x1,y1,x2,y2){
+        var a = x1 - x2;
+        var b = y1 - y2;
+        var c = Math.sqrt(a*a+b*b);
+        var dur = 40;
+        if(c<dur){
+            return true;
+        }else{
+            return false;
+        }
+    }
+</script>
+</body>
+</html>
